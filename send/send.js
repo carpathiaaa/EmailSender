@@ -9,7 +9,7 @@ const templatePath = path.join(__dirname, '..', 'template.html');
 let baseHTML = fs.readFileSync(templatePath, 'utf8');
 baseHTML = baseHTML.replace(/{{FORM_URL}}/g, process.env.FORM_URL);
 
-const credentialsPath = path.join(__dirname, '..', 'credentials.json');
+const credentialsPath = '/etc/secrets/credentials.json';
 const credentials = JSON.parse(fs.readFileSync(credentialsPath));
 
 const auth = new google.auth.GoogleAuth({
