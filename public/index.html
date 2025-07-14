@@ -1,0 +1,138 @@
+<div>
+  <button id="sendBtn">Send Emails</button>
+  <button id="saveBtn">Save Changes</button>
+  <button id="clearLogsBtn">Clear Logs</button>
+</div>
+
+<pre
+  id="logBox"
+  style="
+    margin-top: 20px;
+    padding: 10px;
+    background: #f3f3f3;
+    border: 1px solid #ccc;
+    height: 200px;
+    overflow-y: scroll;
+  "
+></pre>
+
+<div style="margin-bottom: 10px">
+  <input id="newOrg" type="text" placeholder="New Organization Name" />
+  <input id="newEmail" type="email" placeholder="New Email" />
+  <button id="addRowBtn">Add Row</button>
+</div>
+
+<table border="1" id="dataTable">
+  <thead>
+    <tr>
+      <th>Organization</th>
+      <th>Email</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  document.getElementById("addRowBtn").addEventListener("click", async () => {
+    const org = document.getElementById("newOrg").value.trim();
+    const email = document.getElementById("newEmail").value.trim();
+
+    if (!org || !email) {
+      alert("Please enter both organization name and email.");
+      return;
+    }
+
+    const res = await fetch("/add-row", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newRow: [org, email] }),
+    });
+
+    if (res.ok) {
+      alert("Row added successfully");
+      loadData(); // refresh table
+      document.getElementById("newOrg").value = "";
+      document.getElementById("newEmail").value = "";
+    } else {
+      alert(await res.text());
+    }
+  });
+
+  window.addEventListener("beforeunload", async function () {
+    // Send a signal to the backend to shut down
+    await fetch("/shutdown", { method: "POST" });
+  });
+
+  async function loadData() {
+    const res = await fetch("/data");
+    const data = await res.json();
+    const tbody = document.querySelector("#dataTable tbody");
+    tbody.innerHTML = "";
+    data.forEach(([org, email]) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td contenteditable="true">${org}</td>
+        <td contenteditable="true">${email}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  const sendBtn = document.getElementById("sendBtn");
+  const saveBtn = document.getElementById("saveBtn");
+
+  sendBtn.addEventListener("click", async () => {
+    sendBtn.disabled = true;
+    sendBtn.innerText = "Sending...";
+
+    try {
+      const res = await fetch("/send-emails", { method: "POST" });
+      const text = await res.text();
+      alert(text);
+
+      const logsRes = await fetch("/logs");
+      const logs = await logsRes.json();
+      console.log(logs);
+      document.getElementById("logBox").textContent = logs.join("\n");
+    } catch (err) {
+      alert("Failed to send emails.");
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.innerText = "Send Emails";
+    }
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Saving...";
+
+    const rows = document.querySelectorAll("#dataTable tbody tr");
+    const updated = Array.from(rows).map((row) => {
+      const cells = row.querySelectorAll("td");
+      return [cells[0].innerText.trim(), cells[1].innerText.trim()];
+    });
+
+    try {
+      const res = await fetch("/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updatedRows: updated }),
+      });
+      alert(await res.text());
+    } catch (err) {
+      alert("Failed to save changes.");
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerText = "Save Changes";
+    }
+  });
+
+  document
+    .getElementById("clearLogsBtn")
+    .addEventListener("click", async () => {
+      await fetch("/logs/clear", { method: "POST" });
+      document.getElementById("logBox").textContent = "";
+    });
+
+  loadData();
+</script>
