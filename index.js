@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const templatePath = path.join(__dirname, 'template.html');
 let baseHTML = fs.readFileSync(templatePath, 'utf8');
+baseHTML = baseHTML.replace(/{{FORM_URL}}/g, process.env.FORM_URL);
 
 const credentials = JSON.parse(fs.readFileSync('credentials.json'));
 
@@ -20,7 +21,7 @@ async function readSheet() {
     const sheets = google.sheets({ version: 'v4', auth: client });
 
     const spreadsheetId = process.env.SPREADSHEET_ID;
-    const range = 'Sheet1!A2:B'; // A: Org Name, B: Email
+    const range = `'Final List'!A2:B`; // A: Org Name, B: Email
 
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
